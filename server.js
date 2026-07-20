@@ -1,96 +1,66 @@
 const express = require("express");
-const cors = require("cors");
+const path = require("path");
 
 const app = express();
 const PORT = 3000;
 
-app.use(cors());
+// Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Temporary Database
+// Serve frontend
+app.use(express.static(path.join(__dirname, "public")));
+
+// Student Database (temporary)
 let students = [];
 
-// Home Route
-app.get("/", (req, res) => {
-    res.send("Student Backend is running successfully!");
-});
-
-// Get All Students
-app.get("/students", (req, res) => {
+// GET all students
+app.get("/api/students", (req, res) => {
     res.json(students);
 });
 
-// Register Student
-app.post("/register", (req, res) => {
-
-    const { name, email, rollNo, department, faculty } = req.body;
-
+// ADD student
+app.post("/api/students", (req, res) => {
     const student = {
         id: Date.now().toString(),
-        name,
-        email,
-        rollNo,
-        department,
-        faculty
+        ...req.body
     };
 
     students.push(student);
 
-    res.status(201).json({
-        message: "Student Registered Successfully!",
-        student
-    });
-
+    res.status(201).json(student);
 });
 
-// Update Student
-app.put("/students/:id", (req, res) => {
+// UPDATE student
+app.put("/api/students/:id", (req, res) => {
 
-    const { id } = req.params;
-
-    const { name, email, rollNo, department, faculty } = req.body;
+    const id = req.params.id;
 
     const index = students.findIndex(student => student.id === id);
 
-    if (index === -1) {
+    if(index === -1){
         return res.status(404).json({
-            message: "Student not found"
+            message:"Student not found"
         });
     }
 
     students[index] = {
-        id,
-        name,
-        email,
-        rollNo,
-        department,
-        faculty
+        ...students[index],
+        ...req.body
     };
 
-    res.json({
-        message: "Student Updated Successfully!",
-        student: students[index]
-    });
-
+    res.json(students[index]);
 });
 
-// Delete Student
-app.delete("/students/:id", (req, res) => {
+// DELETE student
+app.delete("/api/students/:id",(req,res)=>{
 
-    const { id } = req.params;
+    const id=req.params.id;
 
-    const index = students.findIndex(student => student.id === id);
-
-    if (index === -1) {
-        return res.status(404).json({
-            message: "Student not found"
-        });
-    }
-
-    students.splice(index, 1);
+    students=students.filter(student=>student.id!==id);
 
     res.json({
-        message: "Student Deleted Successfully!"
+        message:"Student deleted successfully"
     });
 
 });
