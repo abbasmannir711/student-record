@@ -1,10 +1,22 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const mongoose = require("mongoose");
+const Student = require("./models/Student");
 
 const app = express();
 app.use(cors());
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
+mongoose.connect(process.env.MONGO_URI)
+.then(() => {
+    console.log("✅ MongoDB Connected");
+})
+.catch((err) => {
+    console.log("❌ MongoDB Error:", err);
+});
 
 // Middleware
 app.use(express.json());
@@ -14,56 +26,90 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
 // Student Database (temporary)
-let students = [];
+
 
 // GET all students
-app.get("/api/students", (req, res) => {
-    res.json(students);
+app.get("/api/students", async (req, res) => {
+    try {
+        const students = await Student.find();
+        res.json(students);
+    } catch (err) {
+        res.status(500).json({
+            message: err.message
+        });
+    }
 });
 
 // ADD student
-app.post("/api/students", (req, res) => {
-    const student = {
-        id: Date.now().toString(),
-        ...req.body
-    };
+app.post("/api/students", async (req, res) => {
+    try {
+        const student = new Student(req.body);
+        const savedStudent = await student.save();
 
-    students.push(student);
-
-    res.status(201).json(student);
+        res.status(201).json(savedStudent);
+    } catch (err) {
+        res.status(400).json({
+            message: err.message
+        });
+    }
 });
 
 // UPDATE student
-app.put("/api/students/:id", (req, res) => {
+app.put("/api/students/:id", async (req, res) => {
 
-    const id = req.params.id;
+    try {
 
-    const index = students.findIndex(student => student.id === id);
+        const updatedStudent = await Student.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
 
-    if(index === -1){
-        return res.status(404).json({
-            message:"Student not found"
+        if (!updatedStudent) {
+            return res.status(404).json({
+                message: "Student not found"
+            });
+        }
+
+        res.json(updatedStudent);
+
+    } catch (err) {
+
+        res.status(400).json({
+            message: err.message
         });
+
     }
 
-    students[index] = {
-        ...students[index],
-        ...req.body
-    };
-
-    res.json(students[index]);
 });
 
 // DELETE student
-app.delete("/api/students/:id",(req,res)=>{
+app.delete("/api/students/:id", async (req, res) => {
 
-    const id=req.params.id;
+    try {
 
-    students=students.filter(student=>student.id!==id);
+        const deletedStudent = await Student.findByIdAndDelete(req.params.id);
 
-    res.json({
-        message:"Student deleted successfully"
-    });
+        if (!deletedStudent) {
+            return res.status(404).json({
+                message: "Student not found"
+            });
+        }
+
+        res.json({
+            message: "Student deleted successfully"
+        });
+
+    } catch (err) {
+
+        res.status(500).json({
+            message: err.message
+        });
+
+    }
 
 });
 
